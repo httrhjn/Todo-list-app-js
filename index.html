@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>To‑Do List — Vanilla JS</title>
+  <style>
+    :root{
+      --bg: #0f1221;
+      --card: #171a2e;
+      --muted: #8b91b3;
+      --text: #e7e9f7;
+      --primary: #6ee7b7;
+      --primary-2: #34d399;
+      --danger: #f87171;
+      --ring: rgba(110,231,183,.35);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin:0; font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text); background: radial-gradient(1200px 700px at 20% -10%, #1a1f3e, transparent), var(--bg);
+      display:flex; align-items:center; justify-content:center; padding: 24px;
+    }
+    .app{
+      width: min(920px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 24px; box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    header{
+      padding: 22px 22px 12px; display:flex; gap:16px; align-items:center; justify-content:space-between;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), transparent);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .title{ font-weight: 800; letter-spacing:.5px; font-size: clamp(18px, 2.4vw, 24px); display:flex; align-items:center; gap:10px; }
+    .title svg{ width: 26px; height: 26px; }
+
+    .row{ display:grid; grid-template-columns: 1fr auto; gap:10px; padding: 16px 22px; }
+    .inputs{ display:grid; grid-template-columns: 1fr 160px; gap:10px; }
+
+    input[type="text"], input[type="date"]{
+      background: var(--card); color: var(--text); border:1px solid rgba(255,255,255,.08);
+      padding: 12px 14px; border-radius: 12px; outline: none; transition: border .15s, box-shadow .15s;
+    }
+    input[type="text"]:focus, input[type="date"]:focus{
+      border-color: var(--primary-2); box-shadow: 0 0 0 6px var(--ring);
+    }
+    .btn{
+      border: none; cursor:pointer; border-radius: 12px; padding: 12px 16px; font-weight: 700;
+      background: linear-gradient(180deg, var(--primary), var(--primary-2)); color:#062215;
+      box-shadow: 0 8px 20px rgba(52,211,153,.35);
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .toolbar{
+      display:grid; grid-template-columns: 1fr auto auto; gap:10px; padding: 0 22px 16px; align-items:center;
+    }
+    .filters{ display:flex; gap: 8px; flex-wrap: wrap; }
+    .chip{
+      padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08);
+      font-weight: 600; cursor:pointer; user-select:none;
+    }
+    .chip[data-active="true"]{ background: rgba(110,231,183,.15); border-color: var(--primary); color: var(--primary); }
+    .search{ display:flex; align-items:center; gap:8px; }
+    .search input{ width: 240px; }
+    .clear-btn{ background: rgba(248,113,113,.1); color: #fecaca; border:1px solid rgba(248,113,113,.25); }
+
+    ul#list{ list-style:none; margin:0; padding: 8px 12px 8px; max-height: 55vh; overflow:auto; }
+    li.todo{ display:grid; grid-template-columns: auto 1fr auto; align-items:center; gap:12px; padding: 12px; margin: 8px 10px; border-radius: 16px; background: var(--card);
+      border:1px solid rgba(255,255,255,.08); box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    }
+    .todo.dragging{ opacity: .5; }
+    .check{ display:flex; align-items:center; gap:10px; }
+    .check input{ width:20px; height:20px; }
+    .content{ display:flex; flex-direction:column; gap:4px; }
+    .text{ outline: none; }
+    .text[contenteditable="true"]{ border-radius: 8px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.08); padding: 4px 6px; }
+    .meta{ font-size: 12px; color: var(--muted); }
+    .meta .overdue{ color: var(--danger); font-weight:700; }
+
+    .actions{ display:flex; align-items:center; gap:6px; }
+    .icon-btn{ background: transparent; border:1px solid rgba(255,255,255,.1); color: var(--text); padding:8px; border-radius: 10px; cursor:pointer; }
+    .icon-btn:hover{ border-color: var(--primary); }
+    .icon-btn svg{ width: 18px; height: 18px; }
+
+    footer{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding: 12px 18px 18px; color: var(--muted); }
+    .counter{ font-weight:700; }
+
+    @media (max-width: 720px){
+      .inputs{ grid-template-columns: 1fr; }
+      .search input{ width: 100%; }
+      .toolbar{ grid-template-columns: 1fr; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="To‑Do List">
+    <header>
+      <div class="title" aria-label="App title">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 12l4 4 12-12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>To‑Do List</span>
+      </div>
+    </header>
+
+    <div class="row" aria-label="Add a new task">
+      <div class="inputs">
+        <input id="newText" type="text" placeholder="Add a task… (e.g., Finish JS project)" aria-label="Task text" />
+        <!-- change date input to datetime-local -->
+<input id="newDue" type="datetime-local" aria-label="Due date and time" />
+
+      </div>
+      <button class="btn" id="addBtn" aria-label="Add task">Add</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters" role="radiogroup" aria-label="Filters">
+        <div class="chip" role="radio" tabindex="0" data-filter="all" data-active="true">All</div>
+        <div class="chip" role="radio" tabindex="0" data-filter="active">Active</div>
+        <div class="chip" role="radio" tabindex="0" data-filter="completed">Completed</div>
+      </div>
+      <div class="search">
+        <input id="search" type="text" placeholder="Search tasks…" aria-label="Search" />
+      </div>
+      <button class="chip clear-btn" id="clearCompleted" aria-label="Clear completed">Clear Completed</button>
+    </div>
+
+    <ul id="list" aria-live="polite"></ul>
+
+    <footer>
+      <div class="counter"><span id="leftCount">0</span> item(s) left</div>
+      <div>Drag and drop to reorder · Double‑click text to edit</div>
+    </footer>
+  </div>
+
+  <template id="itemTemplate">
+    <li class="todo" draggable="true">
+      <label class="check">
+        <input type="checkbox" aria-label="Mark complete" />
+      </label>
+      <div class="content">
+        <div class="text" aria-label="Task" title="Double‑click to edit"></div>
+        <div class="meta"></div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" title="Edit" aria-label="Edit">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn delete" title="Delete" aria-label="Delete">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 6v14a2 2 0 002 2h4a2 2 0 002-2V6M9 6V4a2 2 0 012-2h2a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        <!-- <button class="icon-btn handle" title="Drag to reorder" aria-label="Drag">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4h4M10 8h4M10 12h4M10 16h4M10 20h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button> -->
+      </div>
+    </li>
+  </template>
+
+<script>
+(function(){
+  const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+  const $ = (s, el=document) => el.querySelector(s);
+  const listEl = $('#list');
+  const template = $('#itemTemplate');
+  const addBtn = $('#addBtn');
+  const newText = $('#newText');
+  const newDue = $('#newDue');
+  const search = $('#search');
+  const clearCompletedBtn = $('#clearCompleted');
+  const filterChips = $$('.chip[data-filter]');
+
+  const STORAGE_KEY = 'vanilla_todos_v1';
+  let state = {
+    todos: [], // {id, text, completed, createdAt, due}
+    filter: 'all',
+    query: ''
+  };
+
+  // Load state
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(saved && saved.todos) state = {...state, ...saved};
+  }catch(e){ console.warn('Storage parse error', e); }
+
+  function persist(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function addTodo(text, due){
+  
+  if(text === "" || due === ""){
+    alert("⚠ Please enter both task name and due time!");
+    return;
+  }
+    if(!text || !text.trim()) return;
+    state.todos.unshift({ id: uid(), text: text.trim(), completed: false, createdAt: Date.now(), due: due || '' });
+    persist();
+    render();
+    newText.value = '';
+    newDue.value = '';
+    newText.focus();
+  }
+
+  function updateTodo(id, patch){
+    const t = state.todos.find(t => t.id === id);
+    if(!t) return;
+    Object.assign(t, patch);
+    persist();
+    render();
+  }
+
+  function deleteTodo(id){
+    state.todos = state.todos.filter(t => t.id !== id);
+    persist();
+    render();
+  }
+
+  function clearCompleted(){
+    state.todos = state.todos.filter(t => !t.completed);
+    persist();
+    render();
+  }
+
+  function setFilter(f){
+    state.filter = f;
+    filterChips.forEach(c => c.dataset.active = (c.dataset.filter === f));
+    render();
+  }
+
+  function setQuery(q){
+    state.query = q.toLowerCase();
+    render();
+  }
+
+  function isOverdue(due){
+    if(!due) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const d = new Date(due);
+    return d < today;
+  }
+
+  function filteredTodos(){
+    return state.todos.filter(t => {
+      if(state.filter === 'active' && t.completed) return false;
+      if(state.filter === 'completed' && !t.completed) return false;
+      if(state.query && !t.text.toLowerCase().includes(state.query)) return false;
+      return true;
+    });
+  }
+
+function checkAlarms(){
+  const now = new Date();
+  state.todos.forEach(t=>{
+    if(t.due && !t.completed && !t.alerted){
+      const dueDate = new Date(t.due);
+      if(dueDate <= now){
+        t.alerted = true;
+        persist();
+        alert("⏰ Task due: " + t.text);
+        // play sound
+        const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+        audio.play().catch(e=>console.warn("Autoplay blocked:", e));
+      }
+    }
+  });
+}
+
+// check every 30s
+setInterval(checkAlarms, 30000);
+  function render(){
+    listEl.innerHTML = '';
+    const items = filteredTodos();
+    const frag = document.createDocumentFragment();
+
+    items.forEach(t => {
+      const node = template.content.firstElementChild.cloneNode(true);
+      node.dataset.id = t.id;
+      const checkbox = $('input[type="checkbox"]', node);
+      const text = $('.text', node);
+      const meta = $('.meta', node);
+
+      checkbox.checked = t.completed;
+      text.textContent = t.text;
+
+      const parts = [];
+      const created = new Date(t.createdAt).toLocaleString();
+      parts.push(`Created: ${created}`);
+      if(t.due){
+        const overdue = isOverdue(t.due);
+        parts.push(`Due: <span class="${overdue?'overdue':''}">${new Date(t.due).toLocaleDateString()}</span>`);
+      }
+      meta.innerHTML = parts.join(' · ');
+
+      if(t.completed){ node.style.opacity = .6; text.style.textDecoration = 'line-through'; }
+
+      // Events
+      checkbox.addEventListener('change', () => updateTodo(t.id, { completed: checkbox.checked }));
+
+      // Edit (button or double-click)
+      const editBtn = $('.edit', node);
+      function beginEdit(){
+        text.setAttribute('contenteditable','true');
+        text.focus();
+        document.execCommand('selectAll', false, null);
+      }
+      function endEdit(){
+        text.removeAttribute('contenteditable');
+        const val = text.textContent.trim();
+        if(!val){ deleteTodo(t.id); return; }
+        if(val !== t.text) updateTodo(t.id, { text: val }); else render();
+      }
+      editBtn.addEventListener('click', beginEdit);
+      text.addEventListener('dblclick', beginEdit);
+      text.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); endEdit(); } if(e.key==='Escape'){ text.textContent = t.text; endEdit(); } });
+      text.addEventListener('blur', endEdit);
+
+      // Delete
+      $('.delete', node).addEventListener('click', ()=> deleteTodo(t.id));
+
+      // Drag & drop
+      node.addEventListener('dragstart', (e)=>{ node.classList.add('dragging'); e.dataTransfer.setData('text/plain', t.id); });
+      node.addEventListener('dragend', ()=> node.classList.remove('dragging'));
+
+      frag.appendChild(node);
+    });
+
+    listEl.appendChild(frag);
+
+    // Enable drop on list
+    listEl.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      const dragging = $('.todo.dragging');
+      if(!dragging) return;
+      const after = getDragAfterElement(listEl, e.clientY);
+      if(after == null){ listEl.appendChild(dragging); }
+      else { listEl.insertBefore(dragging, after); }
+    });
+
+    listEl.addEventListener('drop', (e)=>{
+      const id = e.dataTransfer.getData('text/plain');
+      const order = $$('.todo').map(el => el.dataset.id);
+      // Reorder state according to current DOM
+      state.todos.sort((a,b)=> order.indexOf(a.id) - order.indexOf(b.id));
+      persist();
+    });
+
+    // Update counter
+    const left = state.todos.filter(t=>!t.completed).length;
+    $('#leftCount').textContent = left;
+  }
+
+  function getDragAfterElement(container, y){
+    const els = [...container.querySelectorAll('.todo:not(.dragging)')];
+    return els.reduce((closest, child)=>{
+      const box = child.getBoundingClientRect();
+      const offset = y - (box.top + box.height/2);
+      if(offset < 0 && offset > closest.offset){
+        return { offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  // Wire UI
+  addBtn.addEventListener('click', ()=> addTodo(newText.value, newDue.value));
+  newText.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ addTodo(newText.value, newDue.value); }});
+  search.addEventListener('input', (e)=> setQuery(e.target.value));
+  clearCompletedBtn.addEventListener('click', clearCompleted);
+
+  filterChips.forEach(chip => {
+    chip.addEventListener('click', ()=> setFilter(chip.dataset.filter));
+    chip.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setFilter(chip.dataset.filter); }});
+  });
+
+  // Initial render
+  render();
+})();
+</script>
+</body>
+</html>
