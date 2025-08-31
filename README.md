@@ -4,7 +4,7 @@ A simple To-Do List web application built using HTML, CSS, and JavaScript.  Feat
 
 # 📌 To-Do List App (HTML, CSS, JS)
 
-A simple **To-Do List Web Application** built during my internship at **MyTrack**.  
+A simple **To-Do List Web Application** built during my internship.  
 This project was created using **HTML, CSS, and JavaScript** to practice and demonstrate basic frontend development concepts.  
 
 ---
