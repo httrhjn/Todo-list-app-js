@@ -28,4 +28,4 @@ This project was created using **HTML, CSS, and JavaScript** to practice and dem
 ## ▶️ How to Run
 1. Clone this repository:
    ```bash
-   git clone https://github.com/httrhjn/Todo-list-app-js.git
+   git clone https://github.com/zaheerabbas4/Todo-list-app-js.git
